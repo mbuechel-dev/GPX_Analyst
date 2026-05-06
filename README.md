@@ -107,7 +107,7 @@ A static matplotlib chart of deviation (metres) vs. cumulative distance along th
 
 For every point $P_i$ in the comparison track the algorithm finds its shortest distance to the reference **polyline** (not just the nearest point):
 
-$$d_i = \min_j \left\| P_i - \left( A_j + \operatorname{clip}(t,\,0,\,1)\cdot(B_j - A_j) \right) \right\|, \quad t = \frac{(P_i - A_j)\cdot(B_j - A_j)}{\|B_j - A_j\|^2}$$
+$$d_i = \min_j \left\| P_i - \left( A_j + \text{clip}(t,\,0,\,1)\cdot(B_j - A_j) \right) \right\|, \quad t = \frac{(P_i - A_j)\cdot(B_j - A_j)}{\|B_j - A_j\|^2}$$
 
 Coordinates are first projected to approximate metres using an equirectangular projection centred on the tracks' centroid, accurate to < 0.5 % for extents up to ~200 km. Computation is batched so large tracks (tens of thousands of points) run without exhausting memory.
 
