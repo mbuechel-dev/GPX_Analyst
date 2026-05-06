@@ -1,0 +1,13 @@
+pyproject.toml
+compare_gpx/__init__.py
+compare_gpx/__main__.py
+compare_gpx/cli.py
+compare_gpx/comparator.py
+compare_gpx/parser.py
+compare_gpx/visualizer.py
+compare_gpx.egg-info/PKG-INFO
+compare_gpx.egg-info/SOURCES.txt
+compare_gpx.egg-info/dependency_links.txt
+compare_gpx.egg-info/entry_points.txt
+compare_gpx.egg-info/requires.txt
+compare_gpx.egg-info/top_level.txt
