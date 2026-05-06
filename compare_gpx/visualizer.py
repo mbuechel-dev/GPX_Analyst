@@ -17,6 +17,55 @@ from .comparator import ComparisonResult
 
 
 # ---------------------------------------------------------------------------
+# Peak detection
+# ---------------------------------------------------------------------------
+
+def _find_deviation_peaks(
+    deviations: np.ndarray,
+    cum_distances_m: np.ndarray,
+    min_separation_m: float = 300.0,
+    max_peaks: int = 20,
+) -> list[int]:
+    """
+    Return indices of local deviation peaks worth marking on the map.
+
+    A candidate is a local maximum above (mean + 1 std).  Candidates are then
+    pruned so no two selected peaks are closer than *min_separation_m* along
+    the track.  At most *max_peaks* are returned, ordered by index.
+    """
+    if len(deviations) < 3:
+        return []
+
+    threshold = float(np.mean(deviations) + np.std(deviations))
+    threshold = max(threshold, float(np.percentile(deviations, 75)))
+
+    # Find local maxima (greater than both immediate neighbours)
+    candidates = []
+    for i in range(1, len(deviations) - 1):
+        if (
+            deviations[i] >= threshold
+            and deviations[i] >= deviations[i - 1]
+            and deviations[i] >= deviations[i + 1]
+        ):
+            candidates.append(i)
+
+    # Sort by deviation descending, then enforce minimum spacing
+    candidates.sort(key=lambda i: deviations[i], reverse=True)
+    selected: list[int] = []
+    for idx in candidates:
+        too_close = any(
+            abs(float(cum_distances_m[idx]) - float(cum_distances_m[s])) < min_separation_m
+            for s in selected
+        )
+        if not too_close:
+            selected.append(idx)
+        if len(selected) >= max_peaks:
+            break
+
+    return sorted(selected)
+
+
+# ---------------------------------------------------------------------------
 # Interactive HTML map  (folium)
 # ---------------------------------------------------------------------------
 
@@ -95,6 +144,34 @@ def visualize_map(
         radius=7, color="black", fill=True, fill_color="red",
         tooltip="Comparison: end",
     ).add_to(m)
+
+    # --- Deviation peak markers ---
+    peak_indices = _find_deviation_peaks(devs, np.array(result.cum_distances_m))
+    peak_group = folium.FeatureGroup(name="Deviation peaks", show=True)
+    for rank, idx in enumerate(peak_indices, start=1):
+        pt  = cmp_pts[idx]
+        dev = devs[idx]
+        dist_km = result.cum_distances_m[idx] / 1000.0
+        folium.CircleMarker(
+            location=[pt.lat, pt.lon],
+            radius=10,
+            color="#8B0000",
+            weight=2,
+            fill=True,
+            fill_color="#FF4444",
+            fill_opacity=0.85,
+            tooltip=f"Peak #{rank}: {dev:.1f} m deviation at {dist_km:.2f} km",
+        ).add_to(peak_group)
+        folium.Marker(
+            location=[pt.lat, pt.lon],
+            icon=folium.DivIcon(
+                html=f'<div style="font-size:9px;font-weight:bold;color:white;'
+                     f'text-align:center;line-height:20px;">{rank}</div>',
+                icon_size=(20, 20),
+                icon_anchor=(10, 10),
+            ),
+        ).add_to(peak_group)
+    peak_group.add_to(m)
 
     # Statistics panel (top-right overlay)
     stats_html = f"""
@@ -177,6 +254,19 @@ def visualize_plot(
     ax.set_title("GPX Track Deviation Analysis")
     ax.legend(loc="upper left", fontsize=9)
     ax.grid(True, linestyle="--", alpha=0.4)
+
+    # Deviation peak markers
+    peak_indices = _find_deviation_peaks(y, np.array(result.cum_distances_m))
+    for rank, idx in enumerate(peak_indices, start=1):
+        px = x[idx]
+        py = y[idx]
+        ax.axvline(px, color="#8B0000", linewidth=0.8, linestyle=":", alpha=0.6, zorder=2)
+        ax.plot(px, py, "v", color="#8B0000", markersize=7, zorder=5)
+        ax.text(
+            px, py + y_top * 0.02,
+            str(rank),
+            ha="center", va="bottom", fontsize=7, fontweight="bold", color="#8B0000",
+        )
 
     stats_text = (
         f"Max: {result.max_deviation:.1f} m   "
