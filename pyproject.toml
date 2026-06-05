@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "compare-gpx"
-version = "0.1.0"
-description = "Compare two GPX tracks and visualize deviations"
+name = "gpx-analyst"
+version = "0.2.0"
+description = "Suite of GPX analysis tools for cycling events"
 requires-python = ">=3.9"
 dependencies = [
     "gpxpy>=1.5.0",
@@ -13,11 +13,25 @@ dependencies = [
     "matplotlib>=3.7",
     "folium>=0.15",
     "branca>=0.7",
+    "pandas>=2.0",
+    "scipy>=1.11",
+    "statsmodels>=0.14",
+    "osmnx>=1.9",
+    "jinja2>=3.1",
+    "tqdm>=4.0",
 ]
 
+[project.optional-dependencies]
+full = ["scikit-learn>=1.3"]
+
 [project.scripts]
-compare-gpx = "compare_gpx.cli:main"
+gpx-analyst      = "gpx_analyst.cli:main"
+compare-gpx      = "gpx_analyst.compare_gpx.cli:main"
+riding-together  = "gpx_analyst.riding_together.cli:main"
+suspicious-stops = "gpx_analyst.suspicious_stops.cli:main"
+mutant-perf      = "gpx_analyst.mutant_performance.cli:main"
+drafting         = "gpx_analyst.drafting.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["compare_gpx*"]
+include = ["gpx_analyst*"]

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPX Analyst — Combined Report</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: #f5f7fa;
+      color: #1a1a2e;
+    }
+    header {
+      background: #16213e;
+      color: #e8e8e8;
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: baseline;
+      gap: 1.5rem;
+    }
+    header h1 { margin: 0; font-size: 1.5rem; font-weight: 700; }
+    header span { font-size: 0.85rem; color: #a0aec0; }
+    .container { max-width: 1280px; margin: 2rem auto; padding: 0 1.5rem; }
+    .section {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+    .section-header {
+      background: #0f3460;
+      color: #fff;
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .section-header h2 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+    .status-badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .status-ok      { background: #38a169; color: #fff; }
+    .status-pending { background: #d69e2e; color: #fff; }
+    .status-error   { background: #e53e3e; color: #fff; }
+    .section-body { padding: 1.25rem 1.5rem; }
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .file-card {
+      background: #edf2f7;
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
+    }
+    .file-card a { color: #2b6cb0; text-decoration: none; }
+    .file-card a:hover { text-decoration: underline; }
+    .iframe-wrap {
+      width: 100%;
+      height: 520px;
+      border: none;
+      border-top: 1px solid #e2e8f0;
+    }
+    .msg-box {
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+    .msg-pending { background: #fffbeb; border: 1px solid #f6d860; color: #744210; }
+    .msg-error   { background: #fff5f5; border: 1px solid #feb2b2; color: #742a2a; }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.8rem;
+      color: #718096;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>GPX Analyst</h1>
+  <span>Combined Analysis Report</span>
+</header>
+
+<div class="container">
+
+  {# ------------------------------------------------------------------ #}
+  {# Helper macro for a result section                                   #}
+  {# ------------------------------------------------------------------ #}
+  {% macro section(title, key, maps=[], plots=[], extra_files=[]) %}
+  <div class="section">
+    <div class="section-header">
+      <h2>{{ title }}</h2>
+      {% set r = results.get(key, {}) %}
+      {% if r.get('status') == 'not_implemented' %}
+        <span class="status-badge status-pending">Not yet implemented</span>
+      {% elif r.get('status') == 'error' %}
+        <span class="status-badge status-error">Error</span>
+      {% elif r %}
+        <span class="status-badge status-ok">Complete</span>
+      {% else %}
+        <span class="status-badge status-pending">Not run</span>
+      {% endif %}
+    </div>
+    <div class="section-body">
+      {% set r = results.get(key, {}) %}
+      {% if r.get('status') == 'not_implemented' %}
+        <div class="msg-box msg-pending">
+          This analysis module is scaffolded but not yet implemented.
+          See the subpackage <code>README.md</code> for the algorithm design.
+        </div>
+      {% elif r.get('status') == 'error' %}
+        <div class="msg-box msg-error">
+          <strong>Error:</strong> {{ r.get('message', 'Unknown error') }}
+        </div>
+      {% else %}
+        {% for map_key in maps %}
+          {% if r.get(map_key) %}
+            <iframe class="iframe-wrap" src="{{ r[map_key] }}" loading="lazy"></iframe>
+          {% endif %}
+        {% endfor %}
+        {% if plots or extra_files %}
+          <div class="file-grid">
+            {% for fkey in plots + extra_files %}
+              {% if r.get(fkey) %}
+                <div class="file-card">
+                  <a href="{{ r[fkey] }}" target="_blank">{{ fkey.replace('_', ' ').title() }}</a>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% if not r %}
+          <div class="msg-box msg-pending">No results available.</div>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+  {% endmacro %}
+
+  {# ------------------------------------------------------------------ #}
+  {# Sections — one per analysis                                          #}
+  {# ------------------------------------------------------------------ #}
+
+  {{ section(
+       "Track Comparison",
+       "('compare', 'all')",
+       maps=["map"],
+       plots=["plot"]
+  ) }}
+
+  {{ section(
+       "Riding Together",
+       "('riding_together', 'all')",
+       maps=["map"],
+       plots=["timeline"]
+  ) }}
+
+  {{ section(
+       "Suspicious Stops",
+       "('suspicious_stops', 'all')",
+       maps=["map"],
+       extra_files=["report"]
+  ) }}
+
+  {# mutant-perf runs per-rider; show all available outputs #}
+  <div class="section">
+    <div class="section-header">
+      <h2>Mutant Performance</h2>
+    </div>
+    <div class="section-body">
+      <div class="file-grid">
+        {% for key, r in results.items() %}
+          {% if 'mutant_perf' in key %}
+            {% if r.get('timeseries') %}
+              <div class="file-card">
+                <a href="{{ r.timeseries }}" target="_blank">
+                  {{ key }} — time-series
+                </a>
+              </div>
+            {% endif %}
+            {% if r.get('scatter') %}
+              <div class="file-card">
+                <a href="{{ r.scatter }}" target="_blank">
+                  {{ key }} — scatter
+                </a>
+              </div>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% set any_mp = results.values() | selectattr('timeseries', 'defined') | list %}
+      {% if not any_mp %}
+        <div class="msg-box msg-pending">
+          Mutant Performance analysis is scaffolded but not yet implemented.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {{ section(
+       "Drafting Likelihood",
+       "('drafting', 'all')",
+       maps=["map"],
+       plots=["timeline"]
+  ) }}
+
+</div>
+
+<footer>
+  Generated by <strong>gpx-analyst</strong> 0.2.0
+</footer>
+
+</body>
+</html>
